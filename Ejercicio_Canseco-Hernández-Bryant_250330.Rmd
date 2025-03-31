@@ -1,0 +1,201 @@
+---
+title: "Manipulación de Fechas con lubridate"
+author: "Bryant Canseco"
+date: "2025-03-31"
+format: 
+  html:
+    toc: true
+    code-fold: show
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(lubridate)
+library(dplyr)
+library(nycflights13)
+```
+
+## Conversión de cadenas de texto a fechas
+
+```{r conversion-fechas}
+fechas <- c("2025-03-28", "03/28/2025", "28-Mar-2025")
+fechas_convertidas <- parse_date_time(fechas, orders = c("ymd", "mdy", "d-b-Y"))
+print(fechas_convertidas)
+```
+
+## Extracción de componentes de fecha-hora
+
+```{r extraer-componentes}
+dt <- ymd_hms("2025-03-28 14:45:30")
+anio <- year(dt)
+mes <- month(dt)
+dia <- day(dt)
+hora <- hour(dt)
+minuto <- minute(dt)
+segundo <- second(dt)
+print(c(anio, mes, dia, hora, minuto, segundo))
+```
+
+## Modificación de componentes de fecha-hora
+
+```{r modificar-fecha}
+dt <- ymd_hms("2025-03-28 14:45:30")
+year(dt) <- 2030
+month(dt) <- 12
+day(dt) <- 25
+print(dt)
+```
+
+## Cálculo de la diferencia de días entre dos fechas
+
+```{r diferencia-dias}
+fecha1 <- ymd("2025-03-28")
+fecha2 <- ymd("2030-12-25")
+diferencia_dias <- as.numeric(fecha2 - fecha1)
+print(diferencia_dias)
+```
+
+## Creación de una secuencia de fechas
+
+```{r secuencia-fechas}
+fecha_inicio <- ymd("2025-03-01")
+fecha_fin <- ymd("2025-03-31")
+secuencia_fechas <- seq(fecha_inicio, fecha_fin, by = "2 days")
+print(secuencia_fechas)
+```
+
+## Verificación de años bisiestos
+
+```{r anios-bisiestos}
+anios <- 2020:2030
+bisiestos <- leap_year(anios)
+print(bisiestos)
+```
+
+## Operaciones con fecha-hora
+
+```{r operaciones-tiempo}
+dt <- ymd_hms("2025-03-28 14:45:30")
+dt <- dt + months(3)
+dt <- dt - days(15)
+dt <- dt + hours(5)
+print(dt)
+```
+
+## Determinación del nombre del día de la semana
+
+```{r nombre-dia-semana}
+fechas <- ymd(c("2025-03-28", "2026-07-15", "2027-01-01"))
+dias_semana <- wday(fechas, label = TRUE, abbr = FALSE)
+print(dias_semana)
+```
+
+## Conversión de zona horaria
+
+```{r conversion-zona-horaria}
+dt <- ymd_hms("2025-03-28 14:45:30", tz = "America/New_York")
+dt_londres <- with_tz(dt, tzone = "Europe/London")
+print(dt_londres)
+```
+
+## Cálculo de edad
+
+```{r calcular-edad}
+fecha_nacimiento <- ymd("1990-05-15")
+fecha_referencia <- ymd("2025-03-28")
+edad <- floor(time_length(interval(fecha_nacimiento, fecha_referencia), unit = "years"))
+print(edad)
+```
+
+## Crear columna departure_time
+
+```{r crear-departure-time}
+flights <- flights %>%
+  mutate(departure_time = make_datetime(year, month, day, hour, minute))
+head(flights$departure_time)
+```
+
+## Extraer componentes de departure_time
+
+```{r extraer-componentes-departure}
+flights <- flights %>%
+  mutate(
+    dep_year = year(departure_time),
+    dep_month = month(departure_time),
+    dep_day = day(departure_time),
+    dep_hour = hour(departure_time),
+    dep_minute = minute(departure_time)
+  )
+head(flights[, c("departure_time", "dep_year", "dep_month", "dep_day", "dep_hour", "dep_minute")])
+```
+
+## Verificar diferencia entre arr_time y dep_time
+
+```{r verificar-tiempo-vuelo}
+flights <- flights %>%
+  mutate(
+    arrival_time = make_datetime(year, month, day, arr_time %/% 100, arr_time %% 100),
+    calculated_air_time = as.numeric(difftime(arrival_time, departure_time, units = "mins"))
+  )
+head(flights[, c("departure_time", "arrival_time", "air_time", "calculated_air_time")])
+```
+
+## Nombre del día de la semana del vuelo
+
+```{r dia-semana}
+flights <- flights %>%
+  mutate(weekday = wday(departure_time, label = TRUE, abbr = FALSE))
+head(flights[, c("departure_time", "weekday")])
+```
+
+## Filtrar vuelos de fin de semana
+
+```{r vuelos-fin-semana}
+weekend_flights <- flights %>%
+  filter(weekday %in% c("Saturday", "Sunday"))
+nrow(weekend_flights)
+```
+
+## Retrasos en formato horas:minutos
+
+```{r retrasos-horas-minutos}
+flights <- flights %>%
+  mutate(
+    dep_delay_hm = sprintf("%02d:%02d", dep_delay %/% 60, dep_delay %% 60),
+    arr_delay_hm = sprintf("%02d:%02d", arr_delay %/% 60, arr_delay %% 60)
+  )
+head(flights[, c("dep_delay", "dep_delay_hm", "arr_delay", "arr_delay_hm")])
+```
+
+## Filtrar vuelos nocturnos
+
+```{r vuelos-nocturnos}
+night_flights <- flights %>%
+  filter(hour(departure_time) >= 22 | hour(departure_time) < 5)
+nrow(night_flights)
+```
+
+## Duración promedio por mes
+
+```{r promedio-tiempo-vuelo-mensual}
+avg_flight_time <- flights %>%
+  group_by(dep_month) %>%
+  summarize(avg_duration = mean(air_time, na.rm = TRUE))
+print(avg_flight_time)
+```
+
+## Simulación de retraso de 30 minutos
+
+```{r retraso-simulado}
+flights <- flights %>%
+  mutate(new_departure_time = departure_time + minutes(30))
+head(flights[, c("departure_time", "new_departure_time")])
+```
+
+## Días desde el vuelo
+
+```{r dias-desde-vuelo}
+flights <- flights %>%
+  mutate(days_since_flight = as.numeric(Sys.Date() - as.Date(departure_time)))
+head(flights[, c("departure_time", "days_since_flight")])
+```
